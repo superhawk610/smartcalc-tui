@@ -21,44 +21,48 @@ fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     print_header();
 
     let mut stdin = stdin().keys();
-    let mut prompt = Prompt::new();
-    prompt.start();
+    let prompt = Prompt::spawn();
 
-    // let mut spinner = Spinner::new();
-    // spinner.spin();
+    // {
+    //     let ps = Arc::downgrade(&prompt.state());
+    //     std::thread::spawn(move || {
+    //         let mut spinner = Spinner::new();
+    //         while let Some(text) = spinner.recv() {
+    //             match ps.upgrade() {
+    //                 Some(ps) => ps.lock().set_hint(text),
+    //                 None => {
+    //                     spinner.stop();
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //     })
+    // };
 
-    // let spin_ch = spinner.ch().as_ref().unwrap();
-    // while let Ok(text) = spin_ch.recv() {
-    //     prompt.set_hint(text);
-    // }
-
+    let ps = prompt.state();
     while let Some(Ok(k)) = stdin.next() {
         match k {
-            Key::Ctrl('c') | Key::Char('q') => {
+            Key::Ctrl('c') => {
                 break;
             }
-            Key::Char(c) => {
-                // TODO: allow symbols?
-                if ('a'..='z').contains(&c) || ('A'..='Z').contains(&c) || c == ' ' {
-                    // TODO: insert at len() - cur_offset
-                    prompt.append_input(&format!("{}", c));
-                }
-            }
-            Key::Left => {
-                prompt.set_hint("pressed left!");
-                prompt.cursor_left();
-            }
-            Key::Right => {
-                prompt.set_hint("pressed right!");
-                prompt.cursor_right();
-            }
+
+            Key::Char(c) if c.is_ascii() => ps.lock().insert_input(c),
+
+            Key::Left => ps.lock().cursor_left(),
+            Key::Right => ps.lock().cursor_right(),
+
+            Key::Backspace => ps.lock().delete_backward(),
+            Key::Delete => ps.lock().delete_forward(),
+
+            // TODO: implement command history
+            // Key::Up => { }
+            // Key::Down => { }
             _ => (),
         }
     }
 
     // cleanup
     prompt.stop();
-    // spinner.stop();
 
     Ok(())
 }
@@ -70,104 +74,59 @@ fn print_header() {
 use parking_lot::Mutex;
 use std::sync::Arc;
 
-// FIXME: move locking out of prompt and handle at runtime
 struct Prompt {
-    thread: Option<std::thread::JoinHandle<()>>,
-    contents: Arc<Mutex<PromptContents>>,
-    done: Option<Sender<()>>,
+    thread_loop: ThreadLoop,
+    state: Arc<Mutex<PromptState>>,
 }
 
-struct PromptContents {
-    cur_offset: usize,
-    input: String,
-    hint: String,
+struct PromptState {
+    pub cur_offset: usize,
+    pub input: String,
+    pub hint: String,
 }
 
 impl Prompt {
     const PROMPT: &'static str = "> ";
 
-    fn new() -> Self {
-        Self {
-            contents: Arc::new(Mutex::new(PromptContents::new())),
-            done: None,
-            thread: None,
-        }
-    }
+    fn spawn() -> Self {
+        let state = Arc::new(Mutex::new(PromptState::new()));
 
-    fn append_input(&self, input: &str) {
-        let mut contents = self.contents.lock();
-        write!(contents.input, "{}", input).unwrap();
-    }
-
-    fn set_hint(&self, hint: &str) {
-        let mut contents = self.contents.lock();
-        contents.hint.clear();
-        write!(contents.hint, "{}", hint).unwrap();
-    }
-
-    fn cursor_left(&self) {
-        let mut contents = self.contents.lock();
-        if contents.cur_offset < contents.input.len() {
-            contents.cur_offset += 1;
-        }
-    }
-
-    fn cursor_right(&self) {
-        let mut contents = self.contents.lock();
-        if contents.cur_offset > 0 {
-            contents.cur_offset -= 1;
-        }
-    }
-
-    fn start(&mut self) {
-        let (tx, rx) = unbounded();
-        self.done = Some(tx);
-
-        let contents = self.contents.clone();
-        let handle = std::thread::spawn(move || {
+        let thread_loop = {
             let stdout = stdout();
-            let mut stdout = stdout.lock().into_raw_mode().unwrap();
-
-            loop {
-                if let Ok(()) = rx.try_recv() {
-                    write!(stdout, "\r\n").unwrap();
-                    stdout.flush().unwrap();
-                    break;
-                }
-
-                let c = contents.lock();
+            let mut stdout = stdout.into_raw_mode().unwrap();
+            let state = Arc::clone(&state);
+            ThreadLoop::spawn(50, move || {
+                let state = state.lock();
 
                 write!(
                     stdout,
                     "\r{}{}{}  {}\r{}",
                     termion::clear::CurrentLine,
                     Self::PROMPT,
-                    c.input,
-                    c.hint.dimmed(),
-                    cursor::Right((Self::PROMPT.len() + c.input.len() - c.cur_offset) as _)
+                    state.input,
+                    state.hint.dimmed(),
+                    cursor::Right((Self::PROMPT.len() + state.input.len() - state.cur_offset) as _)
                 )
                 .unwrap();
 
                 stdout.flush().unwrap();
+            })
+        };
 
-                std::thread::sleep(std::time::Duration::from_millis(50));
-            }
-        });
-
-        self.thread = Some(handle);
+        Self { thread_loop, state }
     }
 
-    fn stop(&mut self) {
-        if let Some(done) = self.done.take() {
-            done.send(()).unwrap();
+    fn state(&self) -> Arc<Mutex<PromptState>> {
+        Arc::clone(&self.state)
+    }
 
-            // join the thread to make sure the RawTerminal has time to drop
-            self.thread.take().unwrap().join().unwrap();
-        }
+    fn stop(self) {
+        print!("\r\n");
+        self.thread_loop.stop();
     }
 }
 
-impl PromptContents {
+impl PromptState {
     fn new() -> Self {
         Self {
             cur_offset: 0,
@@ -175,58 +134,104 @@ impl PromptContents {
             hint: String::with_capacity(1024),
         }
     }
+
+    fn append_input(&mut self, input: &str) {
+        write!(self.input, "{}", input).unwrap();
+    }
+
+    fn insert_input(&mut self, c: char) {
+        let idx = self.input.len() - self.cur_offset;
+        self.input.insert(idx, c);
+    }
+
+    fn set_hint(&mut self, hint: &str) {
+        self.hint.clear();
+        write!(self.hint, "{}", hint).unwrap();
+    }
+
+    fn cursor_left(&mut self) {
+        if self.cur_offset < self.input.len() {
+            self.cur_offset += 1;
+        }
+    }
+
+    fn cursor_right(&mut self) {
+        if self.cur_offset > 0 {
+            self.cur_offset -= 1;
+        }
+    }
+
+    fn delete_backward(&mut self) {
+        let cursor_idx = self.input.len() - self.cur_offset;
+        if cursor_idx > 0 {
+            self.input.remove(cursor_idx - 1);
+        }
+    }
+
+    fn delete_forward(&mut self) {
+        if self.cur_offset > 0 {
+            self.input.remove(self.input.len() - self.cur_offset);
+            self.cur_offset -= 1;
+        }
+    }
 }
 
-use crossbeam_channel::{select, tick, unbounded, Receiver, Sender};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 
 struct Spinner {
-    done: Option<Sender<()>>,
-    rx: Option<Receiver<&'static str>>,
+    thread_loop: ThreadLoop,
+    rx: Receiver<&'static str>,
 }
 
 impl Spinner {
     const STATES: [&'static str; 4] = ["1", "2", "3", "4"];
 
+    fn recv(&mut self) -> Option<&'static str> {
+        self.rx.recv().ok()
+    }
+
     fn new() -> Self {
-        Self {
-            done: None,
-            rx: None,
-        }
-    }
-
-    fn ch(&self) -> &Option<Receiver<&'static str>> {
-        &self.rx
-    }
-
-    fn spin(&mut self) {
         let (tx, rx) = unbounded();
-        self.rx = Some(rx);
-
-        let (done_tx, done_rx) = unbounded();
-        self.done = Some(done_tx);
-
-        std::thread::spawn(move || {
-            let ticker = tick(std::time::Duration::from_millis(250));
-            let mut state = 0;
-
-            loop {
-                select! {
-                    recv(done_rx) -> _ => {
-                        break;
-                    },
-                    recv(ticker) -> _ => {
-                        state = (state + 1) % Self::STATES.len();
-                        tx.send(Self::STATES[state]).unwrap();
-                    }
-                }
-            }
+        let mut state = 0;
+        let thread_loop = ThreadLoop::spawn(250, move || {
+            state = (state + 1) % Self::STATES.len();
+            tx.send(Self::STATES[state]).unwrap();
         });
+
+        Self { thread_loop, rx }
     }
 
-    fn stop(&mut self) {
-        if let Some(done) = self.done.take() {
-            done.send(()).unwrap();
-        }
+    fn stop(self) {
+        self.thread_loop.stop();
+    }
+}
+
+struct ThreadLoop {
+    handle: std::thread::JoinHandle<()>,
+    done: Sender<()>,
+}
+
+impl ThreadLoop {
+    fn spawn<F>(tick_rate: u64, mut f: F) -> Self
+    where
+        F: FnMut() + Send + 'static,
+    {
+        let (tx, rx) = unbounded();
+        let handle = std::thread::spawn(move || loop {
+            if let Ok(()) = rx.try_recv() {
+                break;
+            }
+
+            f();
+            std::thread::sleep(std::time::Duration::from_millis(tick_rate));
+        });
+
+        Self { handle, done: tx }
+    }
+
+    fn stop(self) {
+        self.done.send(()).unwrap();
+        self.handle.join().unwrap();
     }
 }
 
