@@ -1,4 +1,5 @@
 use std::io::stdin;
+use std::sync::Arc;
 use termion::event::Key;
 use termion::input::TermRead;
 
@@ -11,6 +12,7 @@ mod spinner;
 mod thread_loop;
 
 use prompt::Prompt;
+use spinner::Spinner;
 
 pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", HEADER);
@@ -18,21 +20,21 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdin = stdin().keys();
     let prompt = Prompt::spawn();
 
-    // {
-    //     let ps = Arc::downgrade(&prompt.state());
-    //     std::thread::spawn(move || {
-    //         let mut spinner = Spinner::new();
-    //         while let Some(text) = spinner.recv() {
-    //             match ps.upgrade() {
-    //                 Some(ps) => ps.lock().set_hint(text),
-    //                 None => {
-    //                     spinner.stop();
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //     })
-    // };
+    {
+        let ps = Arc::downgrade(&prompt.state());
+        std::thread::spawn(move || {
+            let mut spinner = Spinner::new();
+            while let Some(text) = spinner.recv() {
+                match ps.upgrade() {
+                    Some(ps) => ps.lock().set_hint(&format!("{} loading...", text)),
+                    None => {
+                        spinner.stop();
+                        break;
+                    }
+                }
+            }
+        });
+    }
 
     let ps = prompt.state();
     while let Some(Ok(k)) = stdin.next() {

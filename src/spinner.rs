@@ -7,7 +7,7 @@ pub struct Spinner {
 }
 
 impl Spinner {
-    const STATES: [&'static str; 4] = ["1", "2", "3", "4"];
+    const STATES: [&'static str; 8] = ["⣾", "⣷", "⣯", "⣟", "⡿", "⢿", "⣻", "⣽"];
 
     pub fn recv(&mut self) -> Option<&'static str> {
         self.rx.recv().ok()
@@ -16,7 +16,7 @@ impl Spinner {
     pub fn new() -> Self {
         let (tx, rx) = unbounded();
         let mut state = 0;
-        let thread_loop = ThreadLoop::spawn(250, move || {
+        let thread_loop = ThreadLoop::spawn(150, move || {
             state = (state + 1) % Self::STATES.len();
             tx.send(Self::STATES[state]).unwrap();
         });
