@@ -7,7 +7,7 @@ use std::sync::Arc;
 use termion::cursor;
 use termion::raw::IntoRawMode;
 
-const PROMPT: &'static str = "> ";
+const PROMPT: &'static str = "# ";
 
 pub struct Prompt {
     thread_loop: ThreadLoop,
@@ -138,7 +138,7 @@ impl std::fmt::Display for PromptState {
             f,
             "{}\r{}{}  {}\r{}",
             termion::clear::CurrentLine,
-            PROMPT,
+            PROMPT.dimmed(),
             self.input,
             self.hint.dimmed(),
             cursor::Right((PROMPT.len() + self.input.len() - self.cur_offset) as _)

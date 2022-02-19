@@ -1,6 +1,6 @@
 [package]
 name = "smartcalc-tui"
-version = "0.1.0"
+version = "1.0.1"
 edition = "2018"
 
 [lib]
@@ -17,3 +17,9 @@ colored = "2.0.0"
 linefeed = "0.6.0"
 crossbeam-channel = "0.5.1"
 parking_lot = "0.11.1"
+libsmartcalc = { git = "https://github.com/erhanbaris/smartcalc" }
+num-format = { version = "0.4.0", features = ["with-system-locale"] }
+const_format = "0.2.19"
+
+# disable logging so it doesn't interrupt tui
+log = { version = "0.4.14", features = ["max_level_off", "release_max_level_off"] }
