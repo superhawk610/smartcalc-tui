@@ -40,11 +40,23 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     while let Some(Ok(k)) = stdin.next() {
         match k {
             Key::Ctrl('c') => {
+                let mut ps = ps.lock();
+
+                // erase hint then flush
+                ps.clear_hint();
+                print!("{}", ps);
+
                 break;
             }
 
             Key::Char('\n') => {
                 let mut ps = ps.lock();
+
+                // erase hint then flush
+                ps.clear_hint();
+                print!("{}", ps);
+
+                // move to next line
                 ps.clear_input();
                 print!("\n");
             }
