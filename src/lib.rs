@@ -7,7 +7,7 @@ use termion::input::TermRead;
 
 const LANG: &'static str = "en";
 
-// TODO: display libsmartcalc version as well as smartcalc-tui
+// TODO: display smartcalc version as well as smartcalc-tui
 // (probably want built::util::parse_versions https://docs.rs/built/latest/built/)
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -51,16 +51,27 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     {
         let ps = Arc::downgrade(&prompt.state());
         std::thread::spawn(move || {
-            use libsmartcalc::app::{ExecuteLine, ExecuteLineResult, SmartCalc};
-            use libsmartcalc::executer::initialize;
+            use chrono::{Local, TimeZone};
+            use chrono_tz::{OffsetName, Tz};
             use num_format::SystemLocale;
+            use smartcalc::SmartCalc;
 
-            initialize();
+            let timezone = match localzone::get_local_zone() {
+                Some(tz) => match tz.parse::<Tz>() {
+                    Ok(tz) => {
+                        let dt = Local::today().naive_local();
+                        tz.offset_from_utc_date(&dt).abbreviation().to_string()
+                    }
+                    Err(_) => "UTC".to_string(),
+                },
+                None => "UTC".to_string(),
+            };
 
             let mut app = SmartCalc::default();
             let locale = SystemLocale::default().unwrap();
-            app.config.decimal_seperator = locale.decimal().to_string();
-            app.config.thousand_separator = locale.separator().to_string();
+            app.set_decimal_seperator(locale.decimal().to_string());
+            app.set_thousand_separator(locale.separator().to_string());
+            app.set_timezone(timezone).unwrap();
 
             loop {
                 match ps.upgrade() {
@@ -76,11 +87,11 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
                         // drop(ps) then relock after execution?
                         let res = app.execute(LANG, ps.input.clone());
 
-                        match res.lines[0] {
-                            Some(ExecuteLine {
-                                result: Ok(ExecuteLineResult { ref output, .. }),
-                                ..
-                            }) => ps.set_hint(output),
+                        match &res.lines[0] {
+                            Some(line) => match &line.result {
+                                Ok(result) => ps.set_hint(&result.output),
+                                _ => ps.clear_hint(),
+                            },
                             _ => ps.clear_hint(),
                         }
                     }
