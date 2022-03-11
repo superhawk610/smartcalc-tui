@@ -1,3 +1,4 @@
+use crate::syntax::SyntaxToken;
 use chrono::{Local, TimeZone};
 use chrono_tz::{OffsetName, Tz};
 use num_format::SystemLocale;
@@ -39,12 +40,16 @@ impl Default for Calculate {
 }
 
 impl Calculate {
-    pub fn execute(&mut self, input: &str) -> Option<String> {
+    pub fn execute(&mut self, input: &str) -> Option<(String, Vec<SyntaxToken>)> {
         self.session.borrow_mut().set_text(input.to_string());
         let res = self.app.execute_session(&self.session);
         match &res.lines[0] {
             Some(line) => match &line.result {
-                Ok(result) => Some(result.output.clone()),
+                Ok(result) => {
+                    let output = result.output.clone();
+                    let tokens = line.ui_tokens.iter().map(|token| token.into()).collect();
+                    Some((output, tokens))
+                }
                 _ => None,
             },
             _ => None,

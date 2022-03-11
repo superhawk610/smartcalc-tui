@@ -20,6 +20,7 @@ const HEADER: &'static str = formatcp!(
 mod calculate;
 mod prompt;
 mod spinner;
+mod syntax;
 mod thread_loop;
 
 use calculate::Calculate;
@@ -61,11 +62,11 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
                     Some(ps) => {
                         // TODO: memoize
                         // TODO: incorporate spinner
-                        // TODO: syntax highlighting
                         let mut ps = ps.lock();
                         // drop(ps) then relock after execution?
-                        if let Some(res) = calc.execute(&ps.input) {
+                        if let Some((res, tokens)) = calc.execute(&ps.input) {
                             ps.set_hint(&res);
+                            ps.set_syntax_tokens(tokens);
                         } else {
                             ps.clear_hint();
                         }
@@ -96,6 +97,7 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
                 // erase hint then flush
                 let hint = ps.hint.clone();
                 ps.clear_hint();
+                ps.cur_offset = 0;
                 if hint.len() > 0 {
                     print!("{} {} {}", ps, "=>".dimmed(), hint.green());
                 }
