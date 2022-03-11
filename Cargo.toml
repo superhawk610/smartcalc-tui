@@ -25,8 +25,8 @@ chrono-tz = "0.5.3"
 
 [dependencies.smartcalc]
 version = "1.0.5"
-git = "https://github.com/superhawk610/smartcalc"
-branch="feat/execute-session"
+git = "https://github.com/erhanbaris/smartcalc"
+branch="main"
 
 [dependencies.log]
 version = "0.4.14"
