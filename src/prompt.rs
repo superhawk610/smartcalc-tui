@@ -77,6 +77,7 @@ impl PromptState {
         self.dirty = false;
     }
 
+    #[allow(dead_code)]
     pub fn append_input(&mut self, input: &str) {
         write!(self.input, "{}", input).unwrap();
         self.mark_dirty();
