@@ -19,35 +19,17 @@ const HEADER: &'static str = formatcp!(
 
 mod calculate;
 mod prompt;
-mod spinner;
 mod syntax;
 mod thread_loop;
 
 use calculate::Calculate;
 use prompt::Prompt;
-use spinner::Spinner;
 
 pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", HEADER);
 
     let mut stdin = stdin().keys();
     let prompt = Prompt::spawn();
-
-    // {
-    //     let ps = Arc::downgrade(&prompt.state());
-    //     std::thread::spawn(move || {
-    //         let mut spinner = Spinner::new();
-    //         while let Some(text) = spinner.recv() {
-    //             match ps.upgrade() {
-    //                 Some(ps) => ps.lock().set_hint(&format!("{} loading...", text)),
-    //                 None => {
-    //                     spinner.stop();
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //     });
-    // }
 
     {
         let ps = Arc::downgrade(&prompt.state());
@@ -61,7 +43,6 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Some(ps) => {
                         // TODO: memoize
-                        // TODO: incorporate spinner
                         let mut ps = ps.lock();
                         // drop(ps) then relock after execution?
                         if let Some((res, tokens)) = calc.execute(&ps.input) {
