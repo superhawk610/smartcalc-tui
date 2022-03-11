@@ -1,3 +1,4 @@
+use crate::syntax::{syntax_highlight, SyntaxToken};
 use crate::thread_loop::ThreadLoop;
 use colored::*;
 use parking_lot::Mutex;
@@ -17,6 +18,7 @@ pub struct Prompt {
 pub struct PromptState {
     dirty: bool,
 
+    pub syntax_tokens: Option<Vec<SyntaxToken>>,
     pub cur_offset: usize,
     pub input: String,
     pub hint: String,
@@ -59,6 +61,7 @@ impl PromptState {
     pub fn new() -> Self {
         Self {
             dirty: false,
+            syntax_tokens: None,
             cur_offset: 0,
             input: String::with_capacity(1024),
             hint: String::with_capacity(1024),
@@ -85,8 +88,11 @@ impl PromptState {
         self.mark_dirty();
     }
 
+    /// Also clears any syntax tokens and resets cursor offset.
     pub fn clear_input(&mut self) {
         self.input.clear();
+        self.cur_offset = 0;
+        self.clear_syntax_tokens();
         self.mark_dirty();
     }
 
@@ -98,6 +104,16 @@ impl PromptState {
 
     pub fn clear_hint(&mut self) {
         self.hint.clear();
+        self.mark_dirty();
+    }
+
+    pub fn set_syntax_tokens(&mut self, tokens: Vec<SyntaxToken>) {
+        self.syntax_tokens = Some(tokens);
+        self.mark_dirty();
+    }
+
+    pub fn clear_syntax_tokens(&mut self) {
+        self.syntax_tokens = None;
         self.mark_dirty();
     }
 
@@ -119,6 +135,7 @@ impl PromptState {
         let cursor_idx = self.input.len() - self.cur_offset;
         if cursor_idx > 0 {
             self.input.remove(cursor_idx - 1);
+            self.clear_syntax_tokens();
             self.mark_dirty();
         }
     }
@@ -127,6 +144,7 @@ impl PromptState {
         if self.cur_offset > 0 {
             self.input.remove(self.input.len() - self.cur_offset);
             self.cur_offset -= 1;
+            self.clear_syntax_tokens();
             self.mark_dirty();
         }
     }
@@ -134,12 +152,20 @@ impl PromptState {
 
 impl std::fmt::Display for PromptState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}\r{}", termion::clear::CurrentLine, PROMPT.dimmed())?;
+
+        if let Some(ref tokens) = self.syntax_tokens {
+            for s in syntax_highlight(&self.input, tokens) {
+                write!(f, "{}", s)?;
+            }
+        } else {
+            // if no syntax tokens are available, just print the input
+            write!(f, "{}", self.input)?;
+        }
+
         write!(
             f,
-            "{}\r{}{}  {}\r{}",
-            termion::clear::CurrentLine,
-            PROMPT.dimmed(),
-            self.input,
+            "  {}\r{}",
             self.hint.dimmed(),
             cursor::Right((PROMPT.len() + self.input.len() - self.cur_offset) as _)
         )
