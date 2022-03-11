@@ -5,8 +5,6 @@ use std::sync::Arc;
 use termion::event::Key;
 use termion::input::TermRead;
 
-const LANG: &'static str = "en";
-
 // TODO: display smartcalc version as well as smartcalc-tui
 // (probably want built::util::parse_versions https://docs.rs/built/latest/built/)
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -19,10 +17,12 @@ const HEADER: &'static str = formatcp!(
     VERSION
 );
 
+mod calculate;
 mod prompt;
 mod spinner;
 mod thread_loop;
 
+use calculate::Calculate;
 use prompt::Prompt;
 use spinner::Spinner;
 
@@ -51,27 +51,7 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     {
         let ps = Arc::downgrade(&prompt.state());
         std::thread::spawn(move || {
-            use chrono::{Local, TimeZone};
-            use chrono_tz::{OffsetName, Tz};
-            use num_format::SystemLocale;
-            use smartcalc::SmartCalc;
-
-            let timezone = match localzone::get_local_zone() {
-                Some(tz) => match tz.parse::<Tz>() {
-                    Ok(tz) => {
-                        let dt = Local::today().naive_local();
-                        tz.offset_from_utc_date(&dt).abbreviation().to_string()
-                    }
-                    Err(_) => "UTC".to_string(),
-                },
-                None => "UTC".to_string(),
-            };
-
-            let mut app = SmartCalc::default();
-            let locale = SystemLocale::default().unwrap();
-            app.set_decimal_seperator(locale.decimal().to_string());
-            app.set_thousand_separator(locale.separator().to_string());
-            app.set_timezone(timezone).unwrap();
+            let mut calc = Calculate::default();
 
             loop {
                 match ps.upgrade() {
@@ -82,17 +62,12 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
                         // TODO: memoize
                         // TODO: incorporate spinner
                         // TODO: syntax highlighting
-                        // TODO: variable definition
                         let mut ps = ps.lock();
                         // drop(ps) then relock after execution?
-                        let res = app.execute(LANG, ps.input.clone());
-
-                        match &res.lines[0] {
-                            Some(line) => match &line.result {
-                                Ok(result) => ps.set_hint(&result.output),
-                                _ => ps.clear_hint(),
-                            },
-                            _ => ps.clear_hint(),
+                        if let Some(res) = calc.execute(&ps.input) {
+                            ps.set_hint(&res);
+                        } else {
+                            ps.clear_hint();
                         }
                     }
                 }
