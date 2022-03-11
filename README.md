@@ -12,18 +12,14 @@ a new way to do calculations on-the-fly. From the README:
 A number of different operations are supported. To see the full list, see
 [here](https://github.com/erhanbaris/smartcalc).
 
-![tui-screenshot](./assets/tui.png)
+![tui-screenshot](./assets/tui-1.0.1.png)
 
 ## Project Status
 
-This project is under active development. It is missing the following features
-currently supported by the web UI:
+This project is under active development. Some existing functionality may not
+work as expected.
 
-- syntax highlighting
-- variable definition
-
-Additionally, some existing functionality may not work as expected. Use at your
-own risk :slightly_smiling_face:
+Use at your own risk :slightly_smiling_face:
 
 ## License
 
