@@ -1,15 +1,13 @@
 use colored::*;
 use const_format::formatcp;
-use std::io::stdin;
+use crossterm::event::{read, Event, KeyCode, KeyModifiers};
 use std::sync::Arc;
-use termion::event::Key;
-use termion::input::TermRead;
 
 // TODO: display smartcalc version as well as smartcalc-tui
 // (probably want built::util::parse_versions https://docs.rs/built/latest/built/)
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const HEADER: &'static str = formatcp!(
+const HEADER: &str = formatcp!(
     "
 ---- smartcalc {} ----
 (ctrl+C / ctrl+D to quit)
@@ -28,7 +26,6 @@ use prompt::Prompt;
 pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", HEADER);
 
-    let mut stdin = stdin().keys();
     let prompt = Prompt::spawn();
 
     {
@@ -60,45 +57,38 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let ps = prompt.state();
-    while let Some(Ok(k)) = stdin.next() {
-        match k {
-            Key::Ctrl('c') | Key::Ctrl('d') => {
+
+    while let Event::Key(key_event) = read()? {
+        let modifier = key_event.modifiers;
+        match key_event.code {
+            KeyCode::Char('C') | KeyCode::Char('D') if modifier == KeyModifiers::CONTROL => {
                 let mut ps = ps.lock();
 
                 // erase hint then flush
                 ps.clear_hint();
                 print!("{}", ps);
-
                 break;
             }
-
-            Key::Char('\n') => {
+            KeyCode::Enter => {
                 let mut ps = ps.lock();
 
                 // erase hint then flush
                 let hint = ps.hint.clone();
                 ps.clear_hint();
                 ps.cur_offset = 0;
-                if hint.len() > 0 {
+                if !hint.is_empty() {
                     print!("{} {} {}", ps, "=>".dimmed(), hint.green());
                 }
 
                 // move to next line
                 ps.clear_input();
-                print!("\n");
+                println!();
             }
-
-            Key::Char(c) if c.is_ascii() => ps.lock().insert_input(c),
-
-            Key::Left => ps.lock().cursor_left(),
-            Key::Right => ps.lock().cursor_right(),
-
-            Key::Backspace => ps.lock().delete_backward(),
-            Key::Delete => ps.lock().delete_forward(),
-
-            // TODO: implement command history
-            // Key::Up => { }
-            // Key::Down => { }
+            KeyCode::Char(c) if c.is_ascii() => ps.lock().insert_input(c),
+            KeyCode::Left => ps.lock().cursor_left(),
+            KeyCode::Right => ps.lock().cursor_right(),
+            KeyCode::Backspace => ps.lock().delete_backward(),
+            KeyCode::Delete => ps.lock().delete_forward(),
             _ => (),
         }
     }
@@ -107,14 +97,4 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     prompt.stop();
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
 }

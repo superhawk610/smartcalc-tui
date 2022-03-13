@@ -5,7 +5,7 @@ use num_format::SystemLocale;
 use smartcalc::{Session, SmartCalc};
 use std::cell::RefCell;
 
-const LANG: &'static str = "en";
+const LANG: &str = "en";
 
 pub struct Calculate {
     app: SmartCalc,
