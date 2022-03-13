@@ -12,7 +12,7 @@ name = "smartcalc"
 path = "src/bin/main.rs"
 
 [dependencies]
-crossterm = "*"
+crossterm = "0.23.0"
 colored = "2.0.0"
 linefeed = "0.6.0"
 crossbeam-channel = "0.5.1"
@@ -22,13 +22,8 @@ const_format = "0.2.19"
 localzone = "0.2.0"
 chrono = "0.4.19"
 chrono-tz = "0.6.1"
-
-[dependencies.smartcalc]
-version = "1.0.5"
-git = "https://github.com/erhanbaris/smartcalc"
-branch = "main"
-
-[dependencies.log]
-version = "0.4.14"
-# disable logging so it doesn't interrupt tui
-features = ["max_level_off", "release_max_level_off"]
+smartcalc = { version = "1.0.5", git = "https://github.com/erhanbaris/smartcalc" }
+log = { version = "0.4.14", features = [
+    "max_level_off",
+    "release_max_level_off",
+] }
