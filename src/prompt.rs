@@ -171,7 +171,7 @@ impl std::fmt::Display for PromptState {
 
         queue!(
             stdout(),
-            Print(format!("{}\r", self.hint.dimmed())),
+            Print(format!("  {}\r", self.hint.dimmed())),
             MoveRight((PROMPT.len() + self.input.len() - self.cur_offset) as u16)
         )
         .unwrap();
