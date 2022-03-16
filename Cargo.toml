@@ -22,8 +22,9 @@ const_format = "0.2.19"
 localzone = "0.2.0"
 chrono = "0.4.19"
 chrono-tz = "0.6.1"
-smartcalc = { version = "1.0.5", git = "https://github.com/erhanbaris/smartcalc" }
-log = { version = "0.4.14", features = [
-    "max_level_off",
-    "release_max_level_off",
-] }
+smartcalc = "1.0.6"
+
+[dependencies.log]
+version = "0.4.14"
+# disable logging so it doesn't interrupt tui
+features = ["max_level_off", "release_max_level_off"]

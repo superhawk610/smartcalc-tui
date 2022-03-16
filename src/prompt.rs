@@ -10,7 +10,7 @@ use std::fmt::Write as _;
 use std::io::{stdout, Write};
 use std::sync::Arc;
 
-const PROMPT: &str = "# ";
+const PROMPT: &'static str = "# ";
 
 pub struct Prompt {
     thread_loop: ThreadLoop,
@@ -35,11 +35,12 @@ impl Prompt {
             let state = Arc::clone(&state);
             ThreadLoop::spawn(50, move || {
                 let mut state = state.lock();
-                if !state.dirty {
-                    return;
+                if state.dirty {
+                    let mut stdout = stdout();
+                    state.queue_print(&mut stdout).unwrap();
+                    stdout.flush().unwrap();
+                    state.mark_clean();
                 }
-                print!("{}", state);
-                state.mark_clean();
             })
         };
 
@@ -51,7 +52,7 @@ impl Prompt {
     }
 
     pub fn stop(self) {
-        println!("\r");
+        print!("\r\n");
         self.thread_loop.stop();
         disable_raw_mode().unwrap();
     }
@@ -66,6 +67,29 @@ impl PromptState {
             input: String::with_capacity(1024),
             hint: String::with_capacity(1024),
         }
+    }
+
+    pub fn queue_print(&self, stdout: &mut std::io::Stdout) -> std::io::Result<()> {
+        queue!(
+            stdout,
+            Clear(ClearType::CurrentLine),
+            Print(format!("\r{}", PROMPT.dimmed())),
+        )?;
+
+        if let Some(ref tokens) = self.syntax_tokens {
+            for s in syntax_highlight(&self.input, tokens) {
+                queue!(stdout, Print(s))?;
+            }
+        } else {
+            // if no syntax tokens are available, just print the input
+            queue!(stdout, Print(&self.input))?;
+        }
+
+        queue!(
+            stdout,
+            Print(format!("  {}\r", self.hint.dimmed())),
+            MoveRight((PROMPT.len() + self.input.len() - self.cur_offset) as u16)
+        )
     }
 
     /// Mark the state as dirty after mutating one or more fields.
@@ -148,35 +172,5 @@ impl PromptState {
             self.clear_syntax_tokens();
             self.mark_dirty();
         }
-    }
-}
-
-impl std::fmt::Display for PromptState {
-    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        queue!(
-            stdout(),
-            Clear(ClearType::CurrentLine),
-            Print(format!("\r{}", PROMPT.dimmed())),
-        )
-        .unwrap();
-
-        if let Some(ref tokens) = self.syntax_tokens {
-            for s in syntax_highlight(&self.input, tokens) {
-                queue!(stdout(), Print(s)).unwrap();
-            }
-        } else {
-            // if no syntax tokens are available, just print the input
-            queue!(stdout(), Print(&self.input)).unwrap();
-        }
-
-        queue!(
-            stdout(),
-            Print(format!("  {}\r", self.hint.dimmed())),
-            MoveRight((PROMPT.len() + self.input.len() - self.cur_offset) as u16)
-        )
-        .unwrap();
-
-        stdout().flush().unwrap();
-        Ok(())
     }
 }

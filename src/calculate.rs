@@ -3,13 +3,12 @@ use chrono::{Local, TimeZone};
 use chrono_tz::{OffsetName, Tz};
 use num_format::SystemLocale;
 use smartcalc::{Session, SmartCalc};
-use std::cell::RefCell;
 
-const LANG: &str = "en";
+const LANG: &'static str = "en";
 
 pub struct Calculate {
     app: SmartCalc,
-    session: RefCell<Session>,
+    session: Session,
 }
 
 impl Default for Calculate {
@@ -33,7 +32,6 @@ impl Default for Calculate {
 
         let mut session = Session::new();
         session.set_language(LANG.to_string());
-        let session = RefCell::new(session);
 
         Self { app, session }
     }
@@ -41,7 +39,7 @@ impl Default for Calculate {
 
 impl Calculate {
     pub fn execute(&mut self, input: &str) -> Option<(String, Vec<SyntaxToken>)> {
-        self.session.borrow_mut().set_text(input.to_string());
+        self.session.set_text(input.to_string());
         let res = self.app.execute_session(&self.session);
         match &res.lines[0] {
             Some(line) => match &line.result {

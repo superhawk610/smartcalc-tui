@@ -1,13 +1,18 @@
 use colored::*;
 use const_format::formatcp;
-use crossterm::event::{read, Event, KeyCode, KeyModifiers};
+use crossterm::{
+    event::{read, Event, KeyCode, KeyModifiers},
+    queue,
+    style::Print,
+};
+use std::io::{stdout, Write};
 use std::sync::Arc;
 
 // TODO: display smartcalc version as well as smartcalc-tui
 // (probably want built::util::parse_versions https://docs.rs/built/latest/built/)
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-const HEADER: &str = formatcp!(
+const HEADER: &'static str = formatcp!(
     "
 ---- smartcalc {} ----
 (ctrl+C / ctrl+D to quit)
@@ -61,12 +66,14 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
     while let Event::Key(key_event) = read()? {
         let modifier = key_event.modifiers;
         match key_event.code {
-            KeyCode::Char('C') | KeyCode::Char('D') if modifier == KeyModifiers::CONTROL => {
+            KeyCode::Char('c') | KeyCode::Char('d') if modifier == KeyModifiers::CONTROL => {
                 let mut ps = ps.lock();
 
                 // erase hint then flush
                 ps.clear_hint();
-                print!("{}", ps);
+                let mut stdout = stdout();
+                ps.queue_print(&mut stdout)?;
+                stdout.flush()?;
                 break;
             }
             KeyCode::Enter => {
@@ -77,7 +84,10 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
                 ps.clear_hint();
                 ps.cur_offset = 0;
                 if !hint.is_empty() {
-                    print!("{} {} {}", ps, "=>".dimmed(), hint.green());
+                    let mut stdout = stdout();
+                    ps.queue_print(&mut stdout)?;
+                    queue!(stdout, Print(" => ".dimmed()), Print(hint.green()))?;
+                    stdout.flush()?;
                 }
 
                 // move to next line
