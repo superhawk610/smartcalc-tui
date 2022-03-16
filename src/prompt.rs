@@ -51,7 +51,7 @@ impl Prompt {
     }
 
     pub fn stop(self) {
-        print!("\r\n");
+        println!("\r");
         self.thread_loop.stop();
         disable_raw_mode().unwrap();
     }

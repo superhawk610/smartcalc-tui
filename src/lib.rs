@@ -89,6 +89,9 @@ pub fn spawn() -> Result<(), Box<dyn std::error::Error>> {
             KeyCode::Right => ps.lock().cursor_right(),
             KeyCode::Backspace => ps.lock().delete_backward(),
             KeyCode::Delete => ps.lock().delete_forward(),
+            // TODO: implement command history
+            // Key::Up => { }
+            // Key::Down => { }
             _ => (),
         }
     }
