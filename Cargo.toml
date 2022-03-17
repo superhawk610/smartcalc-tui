@@ -1,7 +1,17 @@
 [package]
 name = "smartcalc-tui"
-version = "1.0.1"
+authors = ["Aaron Ross <superhawk610@gmail.com>"]
+version = "1.0.6"
 edition = "2018"
+license = "MIT"
+description = "Terminal UI for erhanbarris/smartcalc"
+repository = "https://github.com/superhawk610/smartcalc-tui"
+documentation = "https://github.com/superhawk610/smartcalc-tui"
+homepage = "https://github.com/superhawk610/smartcalc-tui"
+readme = "README.md"
+keywords = ["calculator", "tui"]
+categories = ["mathematics", "science", "command-line-utilities", "development-tools"]
+exclude = [".github/", "assets/"]
 
 [lib]
 name = "smartcalc_tui"
