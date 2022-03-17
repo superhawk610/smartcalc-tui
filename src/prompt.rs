@@ -1,14 +1,16 @@
 use crate::syntax::{syntax_highlight, SyntaxToken};
 use crate::thread_loop::ThreadLoop;
 use colored::*;
+use crossterm::cursor::MoveRight;
+use crossterm::queue;
+use crossterm::style::Print;
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode, Clear, ClearType};
 use parking_lot::Mutex;
 use std::fmt::Write as _;
 use std::io::{stdout, Write};
 use std::sync::Arc;
-use termion::cursor;
-use termion::raw::IntoRawMode;
 
-const PROMPT: &'static str = "# ";
+const PROMPT: &str = "# ";
 
 pub struct Prompt {
     thread_loop: ThreadLoop,
@@ -29,17 +31,14 @@ impl Prompt {
         let state = Arc::new(Mutex::new(PromptState::new()));
 
         let thread_loop = {
-            let stdout = stdout();
-            let mut stdout = stdout.into_raw_mode().unwrap();
+            enable_raw_mode().unwrap();
             let state = Arc::clone(&state);
             ThreadLoop::spawn(50, move || {
                 let mut state = state.lock();
                 if !state.dirty {
                     return;
                 }
-
-                write!(stdout, "{}", state).unwrap();
-                stdout.flush().unwrap();
+                print!("{}", state);
                 state.mark_clean();
             })
         };
@@ -52,8 +51,9 @@ impl Prompt {
     }
 
     pub fn stop(self) {
-        print!("\r\n");
+        println!("\r");
         self.thread_loop.stop();
+        disable_raw_mode().unwrap();
     }
 }
 
@@ -152,23 +152,31 @@ impl PromptState {
 }
 
 impl std::fmt::Display for PromptState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}\r{}", termion::clear::CurrentLine, PROMPT.dimmed())?;
+    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        queue!(
+            stdout(),
+            Clear(ClearType::CurrentLine),
+            Print(format!("\r{}", PROMPT.dimmed())),
+        )
+        .unwrap();
 
         if let Some(ref tokens) = self.syntax_tokens {
             for s in syntax_highlight(&self.input, tokens) {
-                write!(f, "{}", s)?;
+                queue!(stdout(), Print(s)).unwrap();
             }
         } else {
             // if no syntax tokens are available, just print the input
-            write!(f, "{}", self.input)?;
+            queue!(stdout(), Print(&self.input)).unwrap();
         }
 
-        write!(
-            f,
-            "  {}\r{}",
-            self.hint.dimmed(),
-            cursor::Right((PROMPT.len() + self.input.len() - self.cur_offset) as _)
+        queue!(
+            stdout(),
+            Print(format!("  {}\r", self.hint.dimmed())),
+            MoveRight((PROMPT.len() + self.input.len() - self.cur_offset) as u16)
         )
+        .unwrap();
+
+        stdout().flush().unwrap();
+        Ok(())
     }
 }
