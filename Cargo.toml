@@ -11,6 +11,7 @@ homepage = "https://github.com/superhawk610/smartcalc-tui"
 readme = "README.md"
 keywords = ["calculator", "tui"]
 categories = ["mathematics", "science", "command-line-utilities", "development-tools"]
+exclude = [".github/", "assets/"]
 
 [lib]
 name = "smartcalc_tui"
