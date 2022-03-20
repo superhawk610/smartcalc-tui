@@ -28,19 +28,18 @@ jobs:
         run: echo "::set-output name=version::$(tomlq -r '.package.version' smartcalc/Cargo.toml)"
       - if: ${{ steps.tui.outputs.version != steps.lib.outputs.version }}
         name: update dependency version
-        # this can be simplified a bit once `-i -t` are supported together
-        # see https://github.com/kislyuk/yq/issues/130
         run: |
-          tomlq -t '.dependencies.smartcalc = "${{ steps.lib.outputs.version }}"' Cargo.toml > Cargo.updated.toml
-          mv Cargo.updated.toml Cargo.toml
+          rm -rf smartcalc
+          sed -i 's/version = "${{ steps.tui.outputs.version }}"/version = "${{ steps.lib.outputs.version }}"/' Cargo.toml
+          sed -i 's/smartcalc = "${{ steps.tui.outputs.version }}"/smartcalc = "${{ steps.lib.outputs.version }}"/' Cargo.toml
       - if: ${{ steps.tui.outputs.version != steps.lib.outputs.version }}
         name: create PR to update dependency
         uses: peter-evans/create-pull-request@v3
         with:
-          commit-message: update smartcalc to ${{ steps.libVersion.outputs.result }}
-          branch: chore/smartcalc-${{ steps.libVersion.outputs.result }}
-          title: Update smartcalc to ${{ steps.libVersion.outputs.result }}
-          body: |-
+          commit-message: update smartcalc to ${{ steps.lib.outputs.version }}
+          branch: chore/smartcalc-${{ steps.lib.outputs.version }}
+          title: Update smartcalc to ${{ steps.lib.outputs.version }}
+          body: >-
             This is an auto-generated PR created because `smartcalc` appears
             to have recently released a new version. The dependency version
             has been incremented automatically - please make any additional
