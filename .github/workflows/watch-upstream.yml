@@ -50,4 +50,6 @@ jobs:
             git checkout chore/smartcalc-${{ steps.lib.outputs.version }}
             ```
 
+            Tests won't run automatically (bots can't trigger other workflows), so make sure to **close and then re-open ** this PR to have the automated tests run.
+
             Once tests are passing, don't forget to publish to crates.io! :partying_face:
