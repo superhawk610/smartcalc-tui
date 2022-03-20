@@ -41,7 +41,15 @@ jobs:
           title: Update smartcalc to ${{ steps.lib.outputs.version }}
           body: >-
             This is an auto-generated PR created because `smartcalc` appears
-            to have recently released a new version. The dependency version
-            has been incremented automatically - please make any additional
-            changes required (if any) and merge/release on crates.io
-            :slightly_smiling_face:
+            to have recently released a new version. The dependency and package
+            versions have been bumped automatically.
+
+            You can check this branch out locally to make any required changes:
+
+            ```
+            git fetch origin
+            git checkout chore/smartcalc-${{ steps.lib.outputs.version }}
+            ```
+
+            Once tests are passing, don't forget to publish to crates.io!
+            :partying_face:
