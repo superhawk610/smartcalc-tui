@@ -32,7 +32,7 @@ jobs:
           rm -rf smartcalc
           sed -i 's/version = "${{ steps.tui.outputs.version }}"/version = "${{ steps.lib.outputs.version }}"/' Cargo.toml
           sed -i 's/smartcalc = "${{ steps.tui.outputs.version }}"/smartcalc = "${{ steps.lib.outputs.version }}"/' Cargo.toml
-          cargo fetch
+          cargo generate-lockfile
       - if: ${{ steps.tui.outputs.version != steps.lib.outputs.version }}
         name: create PR to update dependency
         uses: peter-evans/create-pull-request@v3
@@ -40,10 +40,8 @@ jobs:
           commit-message: update smartcalc to ${{ steps.lib.outputs.version }}
           branch: chore/smartcalc-${{ steps.lib.outputs.version }}
           title: Update smartcalc to ${{ steps.lib.outputs.version }}
-          body: >-
-            This is an auto-generated PR created because `smartcalc` appears
-            to have recently released a new version. The dependency and package
-            versions have been bumped automatically.
+          body: |-
+            This is an auto-generated PR created because `smartcalc` appears to have recently released a new version. The dependency and package versions have been bumped automatically.
 
             You can check this branch out locally to make any required changes:
 
@@ -52,5 +50,4 @@ jobs:
             git checkout chore/smartcalc-${{ steps.lib.outputs.version }}
             ```
 
-            Once tests are passing, don't forget to publish to crates.io!
-            :partying_face:
+            Once tests are passing, don't forget to publish to crates.io! :partying_face:
