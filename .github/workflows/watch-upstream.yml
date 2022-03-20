@@ -32,6 +32,7 @@ jobs:
           rm -rf smartcalc
           sed -i 's/version = "${{ steps.tui.outputs.version }}"/version = "${{ steps.lib.outputs.version }}"/' Cargo.toml
           sed -i 's/smartcalc = "${{ steps.tui.outputs.version }}"/smartcalc = "${{ steps.lib.outputs.version }}"/' Cargo.toml
+          cargo fetch
       - if: ${{ steps.tui.outputs.version != steps.lib.outputs.version }}
         name: create PR to update dependency
         uses: peter-evans/create-pull-request@v3
