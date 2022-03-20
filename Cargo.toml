@@ -1,6 +1,10 @@
+[[bin]]
+name = "smartcalc"
+path = "src/bin/main.rs"
+
 [package]
 name = "smartcalc-tui"
-authors = ["Aaron Ross <superhawk610@gmail.com>"]
+authors = [ "Aaron Ross <superhawk610@gmail.com>",]
 version = "1.0.6"
 edition = "2018"
 license = "MIT"
@@ -9,17 +13,13 @@ repository = "https://github.com/superhawk610/smartcalc-tui"
 documentation = "https://github.com/superhawk610/smartcalc-tui"
 homepage = "https://github.com/superhawk610/smartcalc-tui"
 readme = "README.md"
-keywords = ["calculator", "tui"]
-categories = ["mathematics", "science", "command-line-utilities", "development-tools"]
-exclude = [".github/", "assets/"]
+keywords = [ "calculator", "tui",]
+categories = [ "mathematics", "science", "command-line-utilities", "development-tools",]
+exclude = [ ".github/", "assets/",]
 
 [lib]
 name = "smartcalc_tui"
 path = "src/lib.rs"
-
-[[bin]]
-name = "smartcalc"
-path = "src/bin/main.rs"
 
 [dependencies]
 crossterm = "0.23.0"
@@ -27,14 +27,16 @@ colored = "2.0.0"
 linefeed = "0.6.0"
 crossbeam-channel = "0.5.1"
 parking_lot = "0.12.0"
-num-format = { version = "0.4.0", features = ["with-system-locale"] }
 const_format = "0.2.19"
 localzone = "0.2.0"
 chrono = "0.4.19"
 chrono-tz = "0.6.1"
-smartcalc = "1.0.6"
+smartcalc = "1.0.7"
+
+[dependencies.num-format]
+version = "0.4.0"
+features = [ "with-system-locale",]
 
 [dependencies.log]
 version = "0.4.14"
-# disable logging so it doesn't interrupt tui
-features = ["max_level_off", "release_max_level_off"]
+features = [ "max_level_off", "release_max_level_off",]
