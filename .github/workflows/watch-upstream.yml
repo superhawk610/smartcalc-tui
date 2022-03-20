@@ -10,12 +10,17 @@ jobs:
   check-upstream:
     runs-on: ubuntu-latest
     steps:
-      - uses: chrisdickinson/setup-yq@latest
-      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v3
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      - name: install tomlq
+        run: pip install yq
+      - uses: actions/checkout@v3
       - name: check smartcalc-tui dependency version
         id: tui
         run: echo "::set-output name=version::$(tomlq -r '.dependencies.smartcalc' Cargo.toml)"
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           repository: erhanbaris/smartcalc
           path: smartcalc
