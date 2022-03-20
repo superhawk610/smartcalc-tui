@@ -33,7 +33,6 @@ jobs:
         run: |
           tomlq -t '.dependencies.smartcalc = "${{ steps.lib.outputs.version }}"' Cargo.toml > Cargo.updated.toml
           mv Cargo.updated.toml Cargo.toml
-          rm Cargo.updated.toml
       - if: ${{ steps.tui.outputs.version != steps.lib.outputs.version }}
         name: create PR to update dependency
         uses: peter-evans/create-pull-request@v3
